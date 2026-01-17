@@ -1,0 +1,10 @@
+fastapi
+openpyxl
+pandas
+pydantic
+pydantic-settings
+pytest
+requests
+sqlalchemy
+streamlit
+uvicorn
