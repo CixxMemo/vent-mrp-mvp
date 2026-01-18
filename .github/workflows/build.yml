@@ -35,15 +35,15 @@ jobs:
 
       - name: Build (Windows)
         if: runner.os == 'Windows'
-        run: pyinstaller --onefile --noconsole run_app.py --name VentMRP
+        run: pyinstaller --onefile --noconsole run_app.py --name VentMRP --add-data ".streamlit/config.toml;.streamlit"
 
       - name: Build (macOS)
         if: runner.os == 'macOS'
-        run: pyinstaller --windowed run_app.py --name VentMRP
+        run: pyinstaller --windowed run_app.py --name VentMRP --add-data ".streamlit/config.toml:.streamlit"
 
       - name: Build (Linux)
         if: runner.os == 'Linux'
-        run: pyinstaller --onefile run_app.py --name VentMRP
+        run: pyinstaller --onefile run_app.py --name VentMRP --add-data ".streamlit/config.toml:.streamlit"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
