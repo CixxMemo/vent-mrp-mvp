@@ -8,3 +8,4 @@ requests
 sqlalchemy
 streamlit
 uvicorn
+httpx>=0.27
