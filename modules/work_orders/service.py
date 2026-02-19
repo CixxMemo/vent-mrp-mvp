@@ -27,7 +27,12 @@ def create_work_order(db: Session, work_order_in: schemas.WorkOrderCreate) -> Di
             raise NotFoundException("Ürün bulunamadı")
         model_lines.append(models.WorkOrderLine(product_id=line.product_id, quantity=line.quantity, product=product))
 
-    work_order = models.WorkOrder(project_name=work_order_in.project_name, lines=model_lines)
+    waste_factor = float(work_order_in.waste_factor or 0.0)
+    work_order = models.WorkOrder(
+        project_name=work_order_in.project_name,
+        lines=model_lines,
+        waste_factor=waste_factor,
+    )
     db.add(work_order)
     db.commit()
     db.refresh(work_order)
@@ -88,6 +93,7 @@ def _serialize_work_order(work_order: models.WorkOrder) -> Dict[str, Any]:
         "id": work_order.id,
         "project_name": work_order.project_name,
         "lines": lines_payload,
+        "waste_factor": float(work_order.waste_factor or 0.0),
         # Legacy compatibility: echo old fields if present
         "product_id": work_order.product_id,
         "quantity": work_order.quantity,

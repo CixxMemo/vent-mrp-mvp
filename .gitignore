@@ -1,0 +1,15 @@
+
+# Python caches
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Local DB / state
+*.db
+*.sqlite
+*.sqlite3
+.streamlit/
+
+# Build outputs
+dist/
+build/

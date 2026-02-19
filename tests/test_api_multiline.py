@@ -68,6 +68,7 @@ def test_create_multiline_work_order():
     data = resp.json()
 
     assert data["project_name"] == "Çoklu Hat Projesi"
+    assert data["waste_factor"] == pytest.approx(0.0)
     assert len(data["lines"]) == 2
     assert data["lines"][0]["product_id"] == prod1["id"]
     assert data["lines"][0]["quantity"] == 5
@@ -152,6 +153,44 @@ def test_mrp_multiline_aggregation():
     assert len(data["lines"]) == 2
     assert data["lines"][0]["quantity"] == 2
     assert data["lines"][1]["quantity"] == 3
+
+
+def test_mrp_waste_factor_from_work_order():
+    """Test MRP totals include work-order waste factor."""
+    prod = create_test_product("Kanal Fire", with_bom=True, bom_cost=100)
+
+    wo_base_resp = client.post("/work-orders", json={
+        "project_name": "MRP Waste Base",
+        "waste_factor": 0.0,
+        "lines": [{"product_id": prod["id"], "quantity": 10}],
+    })
+    assert wo_base_resp.status_code == 200
+    wo_base_id = wo_base_resp.json()["id"]
+
+    wo_waste_resp = client.post("/work-orders", json={
+        "project_name": "MRP Waste 10",
+        "waste_factor": 0.10,
+        "lines": [{"product_id": prod["id"], "quantity": 10}],
+    })
+    assert wo_waste_resp.status_code == 200
+    assert wo_waste_resp.json()["waste_factor"] == pytest.approx(0.10)
+    wo_waste_id = wo_waste_resp.json()["id"]
+
+    mrp_base = client.get(f"/mrp/work-orders/{wo_base_id}")
+    mrp_waste = client.get(f"/mrp/work-orders/{wo_waste_id}")
+    assert mrp_base.status_code == 200
+    assert mrp_waste.status_code == 200
+
+    base_data = mrp_base.json()
+    waste_data = mrp_waste.json()
+
+    assert waste_data["header"]["waste_factor"] == pytest.approx(0.10)
+    assert waste_data["summary"]["material"]["sheet_area_m2"] == pytest.approx(
+        base_data["summary"]["material"]["sheet_area_m2"] * 1.10
+    )
+    assert waste_data["summary"]["cost"]["bom_total"] == pytest.approx(
+        base_data["summary"]["cost"]["bom_total"] * 1.10
+    )
 
 
 def test_bom_merge_by_name_unit():

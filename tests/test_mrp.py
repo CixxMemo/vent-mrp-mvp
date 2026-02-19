@@ -57,12 +57,41 @@ def test_rectangular_mrp_calculation():
 
     # Summary totals
     assert result["summary"]["material"]["sheet_area_m2"] == pytest.approx(per_unit_area * 10)
-    assert result["summary"]["cost"]["bom_total"] == pytest.approx(500.0)
+    assert result["summary"]["cost"]["bom_total"] == pytest.approx(525.0)
 
     # BOM summary
     assert result["bom_summary"]["metrics"]["total_item_count"] == 1
     assert result["bom_summary"]["metrics"]["priced_item_count"] == 1
-    assert result["bom_summary"]["priced_items"][0]["total_quantity"] == pytest.approx(5.0)
+    assert result["bom_summary"]["priced_items"][0]["total_quantity"] == pytest.approx(5.25)
+
+
+def test_work_order_waste_factor_scales_material_and_bom():
+    settings = Settings(waste_factor=0.0)
+    mrp_service = MRPService(settings=settings)
+
+    wo_base = build_work_order(quantity=10)
+    wo_base.waste_factor = 0.0
+    base_result = mrp_service.compute_work_order(wo_base)
+
+    wo_waste = build_work_order(quantity=10)
+    wo_waste.waste_factor = 0.10
+    waste_result = mrp_service.compute_work_order(wo_waste)
+
+    # Baseline (0% waste) keeps existing totals
+    assert base_result["summary"]["material"]["sheet_area_m2"] == pytest.approx(18.0)
+    assert base_result["summary"]["cost"]["bom_total"] == pytest.approx(500.0)
+
+    # 10% waste increases material qty and cost by 10%
+    assert waste_result["header"]["waste_factor"] == pytest.approx(0.10)
+    assert waste_result["summary"]["material"]["sheet_area_m2"] == pytest.approx(
+        base_result["summary"]["material"]["sheet_area_m2"] * 1.10
+    )
+    assert waste_result["bom_summary"]["priced_items"][0]["total_quantity"] == pytest.approx(
+        base_result["bom_summary"]["priced_items"][0]["total_quantity"] * 1.10
+    )
+    assert waste_result["summary"]["cost"]["bom_total"] == pytest.approx(
+        base_result["summary"]["cost"]["bom_total"] * 1.10
+    )
 
 
 def test_validation_fails_for_invalid_dimension():

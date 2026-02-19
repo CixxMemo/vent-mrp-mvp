@@ -1,4 +1,4 @@
-from sqlalchemy import Column, ForeignKey, Integer, String
+from sqlalchemy import Column, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 
 from core.models import Base, TimestampMixin
@@ -12,6 +12,7 @@ class WorkOrder(Base, TimestampMixin):
     # Legacy fields kept for compatibility; not used in new logic
     product_id = Column(Integer, ForeignKey("products.id", ondelete="CASCADE"), nullable=True)
     quantity = Column(Integer, nullable=True)
+    waste_factor = Column(Float, nullable=True, default=0.0, server_default="0")
 
     product = relationship("Product")
     lines = relationship("WorkOrderLine", cascade="all, delete-orphan", back_populates="work_order")

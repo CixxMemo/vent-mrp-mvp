@@ -10,6 +10,7 @@ Launcher for a one-click local experience:
 from __future__ import annotations
 
 import atexit
+import importlib
 import os
 import signal
 import subprocess
@@ -23,6 +24,9 @@ import requests
 
 IS_FROZEN = bool(getattr(sys, "frozen", False))
 BASE_DIR = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
+BACKEND_APP = "main:app"
+BACKEND_URL = "http://127.0.0.1:8000"
+BACKEND_HEALTH_URL = f"{BACKEND_URL}/health"
 STREAMLIT_URL = "http://127.0.0.1:8501"
 
 
@@ -107,11 +111,6 @@ def _process_kwargs() -> dict:
 
 
 def start_backend() -> subprocess.Popen | dict | None:
-    main_path = BASE_DIR / "main.py"
-    if not main_path.exists():
-        print("No FastAPI backend detected (main.py missing); skipping backend start.")
-        return None
-
     if IS_FROZEN:
         return start_backend_in_process()
 
@@ -119,7 +118,7 @@ def start_backend() -> subprocess.Popen | dict | None:
         sys.executable,
         "-m",
         "uvicorn",
-        "main:app",
+        BACKEND_APP,
         "--host",
         "127.0.0.1",
         "--port",
@@ -138,13 +137,14 @@ def start_backend() -> subprocess.Popen | dict | None:
 def start_backend_in_process() -> dict | None:
     try:
         import uvicorn
-
-        import main
+        module_path, app_name = BACKEND_APP.split(":", 1)
+        module = importlib.import_module(module_path)
+        app = getattr(module, app_name)
     except Exception as exc:
         print(f"uvicorn backend not available; skipping backend start ({exc}).")
         return None
 
-    config = uvicorn.Config(main.app, host="127.0.0.1", port=8000, log_level="info")
+    config = uvicorn.Config(app, host="127.0.0.1", port=8000, log_level="info")
     server = uvicorn.Server(config)
     thread = threading.Thread(target=server.run, daemon=True)
     print("Starting FastAPI backend (in-process) on http://127.0.0.1:8000 ...")
@@ -152,16 +152,39 @@ def start_backend_in_process() -> dict | None:
     return {"server": server, "thread": thread}
 
 
-def start_streamlit() -> subprocess.Popen:
-    streamlit_env = os.environ.copy()
-    streamlit_env.update(
+def wait_for_backend(proc: subprocess.Popen | None = None, timeout: int = 30) -> bool:
+    start = time.time()
+    while time.time() - start < timeout:
+        if proc is not None and proc.poll() is not None:
+            print("FastAPI backend exited before becoming ready.")
+            return False
+        try:
+            resp = requests.get(BACKEND_HEALTH_URL, timeout=1)
+            if resp.ok:
+                return True
+        except requests.RequestException:
+            pass
+        time.sleep(0.5)
+    print("Timed out waiting for FastAPI backend health check.")
+    return False
+
+
+def apply_streamlit_runtime_env(target_env: dict) -> None:
+    target_env.update(
         {
             "STREAMLIT_SERVER_HEADLESS": "true",
             "STREAMLIT_SERVER_RUN_ON_SAVE": "false",
             "STREAMLIT_SERVER_FILE_WATCHER_TYPE": "none",
             "STREAMLIT_BROWSER_GATHER_USAGE_STATS": "false",
+            "VENTMRP_API_URL": BACKEND_URL,
         }
     )
+    print(f"Streamlit backend API URL: {target_env['VENTMRP_API_URL']}")
+
+
+def start_streamlit() -> subprocess.Popen:
+    streamlit_env = os.environ.copy()
+    apply_streamlit_runtime_env(streamlit_env)
     cmd = [
         sys.executable,
         "-m",
@@ -186,14 +209,7 @@ def start_streamlit() -> subprocess.Popen:
 
 
 def run_streamlit_in_process() -> None:
-    os.environ.update(
-        {
-            "STREAMLIT_SERVER_HEADLESS": "true",
-            "STREAMLIT_SERVER_RUN_ON_SAVE": "false",
-            "STREAMLIT_SERVER_FILE_WATCHER_TYPE": "none",
-            "STREAMLIT_BROWSER_GATHER_USAGE_STATS": "false",
-        }
-    )
+    apply_streamlit_runtime_env(os.environ)
     argv = [
         "streamlit",
         "run",
@@ -284,6 +300,19 @@ def main() -> None:
     streamlit_proc = None
     try:
         backend_proc = start_backend()
+        if backend_proc is None:
+            print("FastAPI backend did not start; UI will show startup hint.")
+        else:
+            backend_subprocess = backend_proc if isinstance(backend_proc, subprocess.Popen) else None
+            if wait_for_backend(backend_subprocess):
+                print("FastAPI backend is ready.")
+            else:
+                # If spawned process exited, do not continue with a potentially stale backend on the same port.
+                if backend_subprocess is not None and backend_subprocess.poll() is not None:
+                    print("FastAPI backend failed to start (port 8000 may already be in use).")
+                    print("Please stop existing backend/UI processes and run `python run_app.py` again.")
+                    return
+                print("FastAPI backend health check failed; UI will show startup hint.")
         if IS_FROZEN:
             opened = False
 

@@ -15,6 +15,17 @@ class MRPService:
     def __init__(self, settings: Settings):
         self.settings = settings
 
+    def _resolve_work_order_waste_factor(self, work_order: WorkOrder) -> float:
+        """Prefer work-order waste factor; fallback to legacy global setting."""
+        value = getattr(work_order, "waste_factor", None)
+        if value is None:
+            value = self.settings.waste_factor
+        try:
+            parsed = float(value)
+        except (TypeError, ValueError):
+            parsed = 0.0
+        return max(0.0, parsed)
+
     def compute_work_order(self, work_order: WorkOrder) -> Dict[str, Any]:
         lines = work_order.lines or []
         if not lines:
@@ -35,6 +46,8 @@ class MRPService:
         agg_insulation_area = 0.0
         agg_bom_cost: float = 0.0
         total_quantity = 0
+        waste_factor = self._resolve_work_order_waste_factor(work_order)
+        waste_multiplier = 1.0 + waste_factor
 
         # Separate aggregation for priced and unpriced items
         # Key: (name, unit), Value: {"total_quantity": float, "cost_per_unit": float, "total_cost": float}
@@ -57,7 +70,7 @@ class MRPService:
             qty = line.quantity
             total_quantity += qty
             base_sheet_area = 2 * (spec.width_mm + spec.height_mm) * spec.length_mm / 1_000_000
-            sheet_area_per_unit = base_sheet_area * (1 + self.settings.waste_factor)
+            sheet_area_per_unit = base_sheet_area * waste_multiplier
             sheet_mass_per_unit = sheet_area_per_unit * (spec.thickness_mm / 1000.0) * self.settings.steel_density_kg_m3
             insulation_area_per_unit = sheet_area_per_unit if spec.insulation_enabled else 0.0
 
@@ -70,7 +83,7 @@ class MRPService:
             agg_insulation_area += insulation_area_line
 
             for item in product.bom_items:
-                total_qty = item.quantity_per_unit * qty
+                total_qty = item.quantity_per_unit * qty * waste_multiplier
                 key = (item.name, item.unit or "")
 
                 if item.cost_per_unit is not None:
@@ -146,6 +159,8 @@ class MRPService:
                 "generated_at": datetime.now().isoformat(),
                 "line_count": len(lines),
                 "total_quantity": total_quantity,
+                "waste_factor": waste_factor,
+                "waste_factor_pct": waste_factor * 100.0,
             },
             "summary": {
                 "material": {

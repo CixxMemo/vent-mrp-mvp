@@ -5,8 +5,8 @@ import pandas as pd
 import requests
 import streamlit as st
 
+from ui import api_client
 from ui import components as ui
-from ui.api_client import get as api_get, post as api_post
 from ui.texts_tr import (
     APP_TITLE,
     BTN_DOWNLOAD_REPORT,
@@ -34,12 +34,52 @@ from ui.texts_tr import (
     PAGE_WORK_ORDERS,
 )
 
-API_URL = os.getenv("API_URL", "http://localhost:8000")
+BACKEND_DOWN_MESSAGE = getattr(
+    api_client,
+    "BACKEND_DOWN_MESSAGE",
+    "Backend is not running. Please start the app using run_app.py (or the packaged launcher).",
+)
+
+
+def _default_api_base_url() -> str:
+    return os.getenv("VENTMRP_API_URL") or os.getenv("API_URL") or "http://127.0.0.1:8000"
+
+
+def _missing_api_fn(name: str):
+    def _raiser(*args, **kwargs):
+        raise RuntimeError(f"ui.api_client is missing required function: {name}")
+
+    return _raiser
+
+
+api_get = getattr(api_client, "get", _missing_api_fn("get"))
+get_api_base_url = getattr(api_client, "get_api_base_url", _default_api_base_url)
+api_post = getattr(api_client, "post", _missing_api_fn("post"))
 
 st.set_page_config(page_title="HVAC Factory Ops", layout="wide")
 
 
+def current_api_base_url() -> str:
+    return get_api_base_url().rstrip("/")
+
+
+def is_backend_reachable(timeout: float = 1.5) -> bool:
+    try:
+        resp = requests.get(f"{current_api_base_url()}/health", timeout=timeout)
+        return resp.ok
+    except requests.RequestException:
+        return False
+
+
+def show_backend_start_hint() -> None:
+    st.error(BACKEND_DOWN_MESSAGE)
+    st.info("Start app correctly: `python run_app.py`")
+
+
 def load_products() -> List[Dict[str, Any]]:
+    if not is_backend_reachable():
+        show_backend_start_hint()
+        st.stop()
     try:
         return api_get("/products")
     except Exception as exc:
@@ -138,6 +178,14 @@ def create_work_order_form(products: List[Dict[str, Any]]) -> Optional[Dict[str,
 
     # Header
     project_name = st.text_input(LBL_PROJECT, placeholder="Örn: İstanbul Hastanesi B Blok", key="wo_project_name")
+    waste_factor_pct = st.number_input(
+        "Fire Oranı (%)",
+        min_value=0.0,
+        max_value=30.0,
+        value=0.0,
+        step=0.5,
+        key="wo_waste_factor_pct",
+    )
 
     # Lines table-like UI
     st.markdown("**İş Emri Kalemleri**")
@@ -182,7 +230,11 @@ def create_work_order_form(products: List[Dict[str, Any]]) -> Optional[Dict[str,
                         "quantity": int(line["quantity"]),
                     }
                 )
-            payload = {"project_name": project_name, "lines": lines_payload}
+            payload = {
+                "project_name": project_name,
+                "lines": lines_payload,
+                "waste_factor": float(waste_factor_pct) / 100.0,
+            }
             created = api_post("/work-orders", payload)
             ui.success(MSG_SUCCESS_WO)
             st.session_state["wo_lines"] = [{"product_label": None, "quantity": 1}]
@@ -225,11 +277,13 @@ def render_product_table(products: List[Dict[str, Any]]):
 def render_work_order_table(work_orders: List[Dict[str, Any]]):
     rows = []
     for wo in work_orders:
+        fire_pct = round((wo.get("waste_factor") or 0.0) * 100, 1)
         rows.append(
             {
                 "ID": wo["id"],
                 "Proje": wo["project_name"],
                 "Satır Sayısı": len(wo.get("lines", [])),
+                "Fire Oranı (%)": f"{fire_pct:.1f}%",
             }
         )
     if rows:
@@ -247,11 +301,12 @@ def render_mrp_report(mrp: Dict[str, Any], wo_id: int):
 
     # --- Section 1: Report Header ---
     st.markdown("### 📋 Rapor Bilgileri")
-    header_cols = st.columns(4)
+    header_cols = st.columns(5)
     header_cols[0].metric("Proje", header.get("project_name", "-"))
     header_cols[1].metric("İş Emri No", f"#{header.get('work_order_id', '-')}")
     header_cols[2].metric("Satır Sayısı", header.get("line_count", 0))
     header_cols[3].metric("Toplam Miktar", header.get("total_quantity", 0))
+    header_cols[4].metric("Fire Oranı", f"%{header.get('waste_factor_pct', 0):.1f}")
 
     st.markdown("---")
 
@@ -350,7 +405,11 @@ def render_mrp_report(mrp: Dict[str, Any], wo_id: int):
     st.markdown("---")
 
     # --- Excel Download ---
-    excel_resp = requests.get(f"{API_URL}/mrp/work-orders/{wo_id}/excel", timeout=15)
+    try:
+        excel_resp = requests.get(f"{current_api_base_url()}/mrp/work-orders/{wo_id}/excel", timeout=15)
+    except requests.RequestException:
+        show_backend_start_hint()
+        return
     if excel_resp.ok:
         st.download_button(
             label=BTN_DOWNLOAD_REPORT,
@@ -380,6 +439,8 @@ def work_order_central(products: List[Dict[str, Any]], work_orders: List[Dict[st
 
         wo_search = st.text_input(LBL_SEARCH_WO, placeholder="Proje adı", key="wo_search_box")
         filtered_wos = search_filter(work_orders, wo_search, ["project_name"])
+        st.markdown("**İş Emri Listesi**")
+        render_work_order_table(filtered_wos)
         wo_labels = [f"{wo['project_name']} (#{wo['id']})" for wo in filtered_wos]
         selected_wo_label = st.selectbox(
             LBL_WO_SUMMARY, ["-"] + wo_labels, key="wo_select_box", disabled=not filtered_wos
@@ -406,9 +467,10 @@ def work_order_central(products: List[Dict[str, Any]], work_orders: List[Dict[st
 
         st.markdown("### Seçili İş Emri Özeti")
         if selected_wo:
-            cols = st.columns(2)
+            cols = st.columns(3)
             cols[0].write(f"Proje / İş Emri: **{selected_wo['project_name']} (#{selected_wo['id']})**")
             cols[1].write(f"Satır Sayısı: **{len(selected_wo.get('lines', []))}**")
+            cols[2].write(f"Fire Oranı: **{(float(selected_wo.get('waste_factor') or 0.0) * 100):.1f}%**")
             if selected_wo.get("lines"):
                 st.markdown("**Satırlar**")
                 line_rows = []
@@ -440,7 +502,7 @@ def work_order_central(products: List[Dict[str, Any]], work_orders: List[Dict[st
         else:
             new_wo = create_work_order_form(products)
             if new_wo:
-                work_orders.append(new_wo)
+                st.session_state["work_orders"] = load_work_orders()
                 st.session_state["flash_message"] = MSG_SUCCESS_WO
                 st.session_state["flash_type"] = "success"
                 st.rerun()
@@ -456,6 +518,7 @@ def work_order_central(products: List[Dict[str, Any]], work_orders: List[Dict[st
                     [
                         {"label": "Toplam Satır Sayısı", "value": f"{len(selected_wo.get('lines', []))}"},
                         {"label": "Toplam Miktar", "value": f"{sum([ln['quantity'] for ln in selected_wo.get('lines', [])])}"},
+                        {"label": "Fire Oranı", "value": f"{(float(selected_wo.get('waste_factor') or 0.0) * 100):.1f}%"},
                     ]
                 )
             run_disabled = selected_wo is None
@@ -520,6 +583,10 @@ def admin_mrp_tab(work_orders: List[Dict[str, Any]]):
 
 
 def main():
+    if not is_backend_reachable():
+        show_backend_start_hint()
+        st.stop()
+
     if "products" not in st.session_state:
         st.session_state["products"] = load_products()
     if "work_orders" not in st.session_state:

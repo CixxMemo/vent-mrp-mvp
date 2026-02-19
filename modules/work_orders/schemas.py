@@ -21,6 +21,7 @@ class WorkOrderLineRead(WorkOrderLineCreate):
 class WorkOrderCreate(BaseModel):
     project_name: str
     lines: List[WorkOrderLineCreate] = Field(default_factory=list)
+    waste_factor: Optional[float] = Field(default=0.0, ge=0.0, le=1.0)
     # Legacy fallback
     product_id: Optional[int] = None
     quantity: Optional[int] = Field(default=None, gt=0)
@@ -30,6 +31,7 @@ class WorkOrderRead(BaseModel):
     id: int
     project_name: str
     lines: List[WorkOrderLineRead] = Field(default_factory=list)
+    waste_factor: float = 0.0
     # Legacy compatibility
     product_id: Optional[int] = None
     quantity: Optional[int] = None

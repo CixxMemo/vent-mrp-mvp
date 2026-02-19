@@ -96,6 +96,7 @@ def build_mrp_excel(mrp_data: Dict[str, Any]) -> BytesIO:
         ("Rapor Tarihi:", header.get("generated_at", "-")[:10] if header.get("generated_at") else "-"),
         ("Satır Sayısı:", header.get("line_count", 0)),
         ("Toplam Miktar:", header.get("total_quantity", 0)),
+        ("Fire Oranı:", _format_percentage(header.get("waste_factor_pct", 0))),
     ]
     for label, value in header_info:
         ws.cell(row=current_row, column=1, value=label).font = Font(bold=True)
