@@ -1,12 +1,13 @@
 """İş Emri Yönetimi sayfası — Form + Liste."""
 
 import customtkinter as ctk
-from tkinter import messagebox
+from tkinter import messagebox, filedialog
 
 from core.db_helper import get_db_session
 from modules.products import service as product_service
 from modules.work_orders import service as wo_service
 from modules.work_orders.schemas import WorkOrderCreate, WorkOrderLineCreate
+from ui import api_client
 
 # ── Renkler ──
 CLR_SURFACE = "#1E1E2E"
@@ -152,7 +153,16 @@ class WorkOrderFrame(ctk.CTkFrame):
             fg_color=CLR_ACCENT, hover_color="#74C7EC",
             text_color="#1E1E2E", corner_radius=10,
             command=self._save_work_order,
-        ).pack(fill="x", padx=16, pady=(4, 16))
+        ).pack(fill="x", padx=16, pady=(4, 8))
+
+        # — Excel'den İçe Aktar butonu —
+        ctk.CTkButton(
+            panel, text="📊 Excel'den İçe Aktar", height=42,
+            font=ctk.CTkFont(size=14, weight="bold"),
+            fg_color=CLR_SUCCESS, hover_color="#89DCEB",
+            text_color="#1E1E2E", corner_radius=10,
+            command=self._import_from_excel,
+        ).pack(fill="x", padx=16, pady=(0, 16))
 
         return panel
 
@@ -323,6 +333,33 @@ class WorkOrderFrame(ctk.CTkFrame):
             self._clear_form()
             self._refresh_wo_list()
             messagebox.showinfo("Başarılı", f"'{project_name}' iş emri kaydedildi.")
+        except Exception as e:
+            messagebox.showerror("Hata", str(e))
+
+    def _import_from_excel(self):
+        project_name = self.entry_project.get().strip()
+        if not project_name:
+            messagebox.showwarning("Uyarı", "Excel içe aktarımı için Proje Adı zorunludur.")
+            return
+
+        waste_factor = round(self.slider_waste.get() / 100, 2)
+
+        file_path = filedialog.askopenfilename(
+            title="Excel Dosyası Seç",
+            filetypes=[("Excel Files", "*.xlsx"), ("All Files", "*.*")]
+        )
+        if not file_path:
+            return
+
+        try:
+            api_client.upload(
+                "/work-orders/import", 
+                file_path, 
+                data={"project_name": project_name, "waste_factor": waste_factor}
+            )
+            self._clear_form()
+            self._refresh_wo_list()
+            messagebox.showinfo("Başarılı", f"'{project_name}' iş emri Excel'den içe aktarıldı.")
         except Exception as e:
             messagebox.showerror("Hata", str(e))
 

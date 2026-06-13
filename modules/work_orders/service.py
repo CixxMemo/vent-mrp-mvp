@@ -3,8 +3,11 @@ from typing import List, Dict, Any
 from sqlalchemy.orm import Session
 
 from core.errors import NotFoundException, ValidationAppException
-from modules.products import models as product_models
+from modules.products import models as product_models, schemas as product_schemas, service as product_service
+from modules.products.types import ProductType
 from modules.work_orders import models, schemas
+import pandas as pd
+from fastapi import UploadFile
 
 
 def create_work_order(db: Session, work_order_in: schemas.WorkOrderCreate) -> Dict[str, Any]:
@@ -125,5 +128,56 @@ def migrate_legacy_work_orders(db: Session) -> None:
         created_lines += 1
     if created_lines:
         db.commit()
+
+
+def import_work_order_from_excel(
+    db: Session, file: UploadFile, project_name: str, waste_factor: float
+) -> Dict[str, Any]:
+    try:
+        df = pd.read_excel(file.file)
+    except Exception as e:
+        raise ValidationAppException(f"Excel dosyası okunamadı: {e}")
+
+    expected_cols = ["Ürün Adı", "Miktar", "Genişlik", "Yükseklik", "Uzunluk", "Kalınlık"]
+    for col in expected_cols:
+        if col not in df.columns:
+            raise ValidationAppException(f"Eksik kolon: {col}")
+
+    lines = []
+    for index, row in df.iterrows():
+        try:
+            qty = int(row["Miktar"])
+            if qty <= 0:
+                continue
+
+            spec = product_schemas.RectangularDuctSpec(
+                width_mm=float(row["Genişlik"]),
+                height_mm=float(row["Yükseklik"]),
+                length_mm=float(row["Uzunluk"]),
+                thickness_mm=float(row["Kalınlık"]),
+            )
+
+            product_in = product_schemas.ProductCreate(
+                name=str(row["Ürün Adı"]),
+                description="Excel'den içe aktarıldı",
+                product_type=ProductType.RECTANGULAR_DUCT,
+                spec=spec,
+            )
+
+            product_out = product_service.create_product(db, product_in)
+            lines.append(schemas.WorkOrderLineCreate(product_id=product_out["id"], quantity=qty))
+        except Exception as e:
+            raise ValidationAppException(f"Satır {index + 2} işlenirken hata: {e}")
+
+    if not lines:
+        raise ValidationAppException("İçe aktarılacak geçerli satır bulunamadı.")
+
+    wo_in = schemas.WorkOrderCreate(
+        project_name=project_name,
+        lines=lines,
+        waste_factor=waste_factor
+    )
+
+    return create_work_order(db, wo_in)
 
 

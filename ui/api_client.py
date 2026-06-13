@@ -40,3 +40,16 @@ def post(path: str, payload: Dict[str, Any]) -> Any:
     raise RuntimeError(_friendly_message("İstek başarısız oldu", resp))
 
 
+def upload(path: str, file_path: str, data: Optional[Dict[str, Any]] = None) -> Any:
+    url = f"{get_api_base_url()}{path}"
+    try:
+        with open(file_path, "rb") as f:
+            files = {"file": f}
+            resp = requests.post(url, files=files, data=data, timeout=30)
+        if resp.ok:
+            return resp.json()
+        raise RuntimeError(_friendly_message("Dosya yükleme başarısız oldu", resp))
+    except requests.RequestException as exc:
+        raise RuntimeError(BACKEND_DOWN_MESSAGE) from exc
+
+
