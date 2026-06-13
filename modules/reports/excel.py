@@ -116,6 +116,7 @@ def build_mrp_excel(mrp_data: Dict[str, Any]) -> BytesIO:
         ("Toplam Sac Alanı:", f"{_format_number(material.get('sheet_area_m2', 0), 3)} m²"),
         ("Toplam Sac Ağırlığı:", f"{_format_number(material.get('sheet_mass_kg', 0), 3)} kg"),
         ("Toplam Yalıtım Alanı:", f"{_format_number(material.get('insulation_area_m2', 0), 3)} m²"),
+        ("Toplam Profil Uzunluğu:", f"{_format_number(material.get('profile_length_m', 0), 2)} m"),
         ("Tahmini BOM Maliyeti:", f"{_format_currency(cost.get('bom_total', 0))} TL"),
         ("Maliyet Tamlığı:", _format_percentage(bom_summary.get("metrics", {}).get("cost_completeness_pct", 0))),
     ]
@@ -136,11 +137,11 @@ def build_mrp_excel(mrp_data: Dict[str, Any]) -> BytesIO:
     ws.cell(row=current_row, column=1, value="SATIŞ KALEMLERİ DETAYI").font = styles["section_font"]
     current_row += 1
 
-    line_columns = ["#", "Ürün", "Miktar", "Sac Alanı (m²)", "Sac Ağırlığı (kg)", "Yalıtım Alanı (m²)"]
+    line_columns = ["#", "Ürün", "Miktar", "Sac Alanı (m²)", "Sac Ağırlığı (kg)", "Yalıtım Alanı (m²)", "Profil (m)"]
     _apply_header_row(ws, current_row, line_columns, styles)
     current_row += 1
 
-    line_alignments = ["center", "left", "center", "right", "right", "right"]
+    line_alignments = ["center", "left", "center", "right", "right", "right", "right"]
     for line in lines:
         totals = line.get("totals", {})
         row_values = [
@@ -150,6 +151,7 @@ def build_mrp_excel(mrp_data: Dict[str, Any]) -> BytesIO:
             _format_number(totals.get("sheet_area_m2", 0), 3),
             _format_number(totals.get("sheet_mass_kg", 0), 3),
             _format_number(totals.get("insulation_area_m2", 0), 3),
+            _format_number(totals.get("profile_length_m", 0), 2),
         ]
         _apply_data_row(ws, current_row, row_values, styles, line_alignments)
         current_row += 1
@@ -162,9 +164,10 @@ def build_mrp_excel(mrp_data: Dict[str, Any]) -> BytesIO:
         _format_number(material.get("sheet_area_m2", 0), 3),
         _format_number(material.get("sheet_mass_kg", 0), 3),
         _format_number(material.get("insulation_area_m2", 0), 3),
+        _format_number(material.get("profile_length_m", 0), 2),
     ]
     _apply_data_row(ws, current_row, subtotal_values, styles, line_alignments)
-    for col in range(1, 7):
+    for col in range(1, 8):
         ws.cell(row=current_row, column=col).font = styles["subtotal_font"]
     current_row += 2
 
@@ -232,7 +235,7 @@ def build_mrp_excel(mrp_data: Dict[str, Any]) -> BytesIO:
         current_row += 1
 
     # Set column widths for better readability
-    _set_column_widths(ws, [25, 15, 15, 18, 18, 12])
+    _set_column_widths(ws, [25, 15, 15, 18, 18, 18, 12])
 
     stream = BytesIO()
     wb.save(stream)

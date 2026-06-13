@@ -212,7 +212,7 @@ class MRPFrame(ctk.CTkFrame):
         # ── Özet kartları ──
         cards_frame = ctk.CTkFrame(self.result_panel, fg_color="transparent")
         cards_frame.pack(fill="x", padx=12, pady=(8, 12))
-        cards_frame.grid_columnconfigure((0, 1, 2, 3), weight=1)
+        cards_frame.grid_columnconfigure((0, 1, 2, 3, 4), weight=1)
 
         self._summary_card(cards_frame, 0, "📐", "Sac Alanı",
                            f"{material.get('sheet_area_m2', 0):.3f} m²", CLR_BLUE)
@@ -220,7 +220,9 @@ class MRPFrame(ctk.CTkFrame):
                            f"{material.get('sheet_mass_kg', 0):.3f} kg", CLR_GREEN)
         self._summary_card(cards_frame, 2, "🧊", "Yalıtım Alanı",
                            f"{material.get('insulation_area_m2', 0):.3f} m²", "#CBA6F7")
-        self._summary_card(cards_frame, 3, "💰", "BOM Maliyeti",
+        self._summary_card(cards_frame, 3, "📏", "Profil İhtiyacı",
+                           f"{material.get('profile_length_m', 0):.2f} m", "#F9E2AF")
+        self._summary_card(cards_frame, 4, "💰", "BOM Maliyeti",
                            f"{cost.get('bom_total', 0):,.2f} ₺", CLR_ACCENT)
 
         # ── Kalem detayları ──
@@ -298,6 +300,8 @@ class MRPFrame(ctk.CTkFrame):
         detail = f"Sac: {totals.get('sheet_area_m2', 0):.3f} m²  •  {totals.get('sheet_mass_kg', 0):.3f} kg"
         if totals.get("insulation_area_m2", 0) > 0:
             detail += f"  •  Yalıtım: {totals['insulation_area_m2']:.3f} m²"
+        if totals.get("profile_length_m", 0) > 0:
+            detail += f" | Profil: {totals['profile_length_m']:.2f} m"
 
         ctk.CTkLabel(
             card, text=detail,
