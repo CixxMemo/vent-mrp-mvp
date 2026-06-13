@@ -1,30 +1,30 @@
 # FactoryCut Planner
 
-FactoryCut Planner is a desktop-ready production planning and material requirements planning (MRP) application for small manufacturing workflows. It replaces spreadsheet-heavy planning with a local-first tool that combines product setup, BOM control, work order management, and automated MRP in a single workflow.
+FactoryCut Planner is a desktop-ready production planning and material requirements planning (MRP) application for small manufacturing workflows. It replaces spreadsheet-heavy planning with a local-first, native desktop application that combines product setup, BOM control, work order management, and automated MRP in a single, streamlined workspace.
 
 ## Key Features
 
-- Product definition with dimensions and material properties
-- Bill of Materials (BOM) creation and maintenance
-- Work order creation and management
-- Automatic MRP calculation for production planning
-- Excel report export for operational reporting
-- Dark UI optimized for daily operational use
-- Fully offline runtime on `localhost`
-- One-click launcher that starts backend and UI together
+- **Product Setup**: Define products with custom dimensions and material properties.
+- **BOM Control**: Create and maintain Bills of Materials (BOM) for assembly hierarchies.
+- **Work Order Management**: Formulate and track production work orders.
+- **Automated MRP**: Run Material Requirements Planning calculations to compute net requirements.
+- **Excel Reporting**: Export operational and production reports directly to Excel files.
+- **Modern Dark UI**: A sleek, high-contrast dark user interface styled with the Catppuccin Mocha palette, designed for shop-floor and operational usability.
+- **Fully Offline**: A local-first architecture powered by an embedded SQLite database.
 
 ## Technology Stack
 
-### Frontend
-- Streamlit
+### Desktop UI
+- **CustomTkinter**: Modern, customizable widgets for desktop GUI design.
+- **Catppuccin Mocha**: Elegant color scheme optimized for readability and dark mode environments.
 
-### Backend
-- FastAPI
-- Uvicorn
+### Core & Database
+- **SQLAlchemy**: ORM layers for database transactions.
+- **SQLite**: Local embedded database storage.
+- **Pandas / OpenPyXL**: Analytical data manipulation and Excel export generation.
 
 ### Packaging
-- PyInstaller
-- Desktop outputs: Windows `.exe` and macOS `.app`
+- **PyInstaller**: Native desktop deployment packaging (Windows `.exe` and macOS `.app`).
 
 ## Running in Development Mode
 
@@ -40,36 +40,33 @@ pip install -r requirements.txt
 
 ### Run
 
-Use the launcher as the primary entry point:
+Launch the application directly:
 
 ```bash
-python run_app.py
+python main.py
 ```
 
 Notes:
-- `run_app.py` is the correct entry point.
-- `streamlit_app.py` should not be run directly.
-- The application runs fully offline on `localhost`.
-- The launcher starts FastAPI (`127.0.0.1:8000`) and Streamlit (`127.0.0.1:8501`) together.
+- `main.py` is the primary entry point of the desktop application.
+- The application executes fully offline with a local database automatically initialized on first run.
 
 ## Packaged Desktop Version
 
 The project supports one-click desktop packaging for local deployment:
 
-- Windows package: `.exe`
-- macOS package: `.app`
-- Packaging tool: PyInstaller
-- Runtime behavior matches development mode, with backend and UI launched together via the same startup model
+- **Windows Package**: Standalone `.exe`
+- **macOS Package**: Standalone `.app`
+- **Packaging Tool**: PyInstaller
+- The packaged executable contains all logic and assets, running natively without requiring a Python environment.
 
 ## Project Structure
 
 ```text
 factorycut_planner/
-├── run_app.py
-├── streamlit_app.py
 ├── main.py
 ├── core/
 │   ├── database.py
+│   ├── db_helper.py
 │   ├── models.py
 │   ├── settings.py
 │   └── errors.py
@@ -79,19 +76,25 @@ factorycut_planner/
 │   ├── mrp/
 │   └── reports/
 ├── ui/
+│   ├── frames/
+│   │   ├── mrp_frame.py
+│   │   ├── products_frame.py
+│   │   └── work_orders_frame.py
+│   ├── components.py
+│   ├── api_client.py
+│   └── texts_tr.py
 ├── tests/
 ├── requirements.txt
-├── start_ui.bat
 └── hvac_factory_ops.db
 ```
 
 ## Architecture Overview
 
-`Streamlit UI` -> `FastAPI API` -> `Backend Services` -> `Local Database`
+`CustomTkinter GUI` -> `Core/Backend Services` -> `Local SQLite Database`
 
-- The Streamlit interface sends requests to FastAPI endpoints.
-- Backend service modules execute product, BOM, work order, and MRP logic.
-- Data is persisted locally, enabling a fully offline localhost deployment.
+- The UI layer (built with CustomTkinter) interacts directly with core service modules.
+- Core backend services execute database actions via SQLAlchemy ORM.
+- Operational data is persisted locally in an embedded SQLite database.
 
 ## Roadmap
 
@@ -104,3 +107,4 @@ factorycut_planner/
 ## License
 
 This repository is published as a portfolio and demo project focused on real-world manufacturing planning workflows. It is intended for evaluation and demonstration; commercial usage and redistribution require explicit permission from the author.
+
