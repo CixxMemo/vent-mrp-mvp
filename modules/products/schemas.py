@@ -41,7 +41,7 @@ class BOMItemRead(BOMItemBase):
     id: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class ProductBase(BaseModel):
@@ -61,6 +61,6 @@ class ProductRead(ProductBase):
     bom_items: List[BOMItemRead] = Field(default_factory=list)
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 

@@ -15,7 +15,7 @@ class WorkOrderLineRead(WorkOrderLineCreate):
     product: ProductRead
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class WorkOrderCreate(BaseModel):
@@ -37,6 +37,6 @@ class WorkOrderRead(BaseModel):
     quantity: Optional[int] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 

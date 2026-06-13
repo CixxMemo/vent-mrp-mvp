@@ -66,3 +66,9 @@ def get_product(db: Session, product_id: int) -> models.Product:
     return _serialize_product(product)
 
 
+def delete_product(db: Session, product_id: int) -> None:
+    product = db.query(models.Product).filter(models.Product.id == product_id).first()
+    if not product:
+        raise NotFoundException("Ürün bulunamadı")
+    db.delete(product)
+    db.commit()

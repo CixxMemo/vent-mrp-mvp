@@ -100,6 +100,12 @@ def _serialize_work_order(work_order: models.WorkOrder) -> Dict[str, Any]:
     }
 
 
+def delete_work_order(db: Session, work_order_id: int) -> None:
+    work_order = _get_work_order_model(db, work_order_id)
+    db.delete(work_order)
+    db.commit()
+
+
 def migrate_legacy_work_orders(db: Session) -> None:
     """Create line records for legacy work_orders that have product_id/quantity but no lines."""
     legacy_wos = (
