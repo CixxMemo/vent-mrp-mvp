@@ -117,9 +117,17 @@ def build_mrp_excel(mrp_data: Dict[str, Any]) -> BytesIO:
         ("Toplam Sac Ağırlığı:", f"{_format_number(material.get('sheet_mass_kg', 0), 3)} kg"),
         ("Toplam Yalıtım Alanı:", f"{_format_number(material.get('insulation_area_m2', 0), 3)} m²"),
         ("Toplam Profil Uzunluğu:", f"{_format_number(material.get('profile_length_m', 0), 2)} m"),
+    ]
+
+    nesting = material.get("profile_nesting")
+    if nesting and nesting.get("total_bars", 0) > 0:
+        summary_data.append(("Satın Alınacak Profil (6m):", f"{nesting.get('total_bars')} Adet"))
+        summary_data.append(("Profil Kesim Firesi:", f"%{nesting.get('waste_percentage', 0):.1f}"))
+
+    summary_data.extend([
         ("Tahmini BOM Maliyeti:", f"{_format_currency(cost.get('bom_total', 0))} TL"),
         ("Maliyet Tamlığı:", _format_percentage(bom_summary.get("metrics", {}).get("cost_completeness_pct", 0))),
-    ]
+    ])
     for label, value in summary_data:
         ws.cell(row=current_row, column=1, value=label).font = Font(bold=True)
         ws.cell(row=current_row, column=2, value=value)

@@ -220,8 +220,17 @@ class MRPFrame(ctk.CTkFrame):
                            f"{material.get('sheet_mass_kg', 0):.3f} kg", CLR_GREEN)
         self._summary_card(cards_frame, 2, "🧊", "Yalıtım Alanı",
                            f"{material.get('insulation_area_m2', 0):.3f} m²", "#CBA6F7")
-        self._summary_card(cards_frame, 3, "📏", "Profil İhtiyacı",
-                           f"{material.get('profile_length_m', 0):.2f} m", "#F9E2AF")
+        
+        nesting = material.get("profile_nesting")
+        if nesting and nesting.get("total_bars", 0) > 0:
+            prof_title = f"Profil (Fire: %{nesting.get('waste_percentage', 0):.1f})"
+            prof_val = f"{nesting.get('total_bars')} Boy (6m)"
+        else:
+            prof_title = "Profil İhtiyacı"
+            prof_val = f"{material.get('profile_length_m', 0):.2f} m"
+
+        self._summary_card(cards_frame, 3, "📏", prof_title,
+                           prof_val, "#F9E2AF")
         self._summary_card(cards_frame, 4, "💰", "BOM Maliyeti",
                            f"{cost.get('bom_total', 0):,.2f} ₺", CLR_ACCENT)
 

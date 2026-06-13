@@ -9,6 +9,7 @@ from core.settings import Settings
 from modules.products.schemas import AHUSpec, FittingSpec, RectangularDuctSpec
 from modules.products.types import ProductType
 from modules.work_orders.models import WorkOrder, WorkOrderLine
+from modules.mrp.nesting import optimize_1d_cuts
 
 
 class MRPService:
@@ -59,6 +60,8 @@ class MRPService:
             lambda: {"total_quantity": 0.0}
         )
 
+        agg_profile_pieces_mm = []
+
         for line_number, line in enumerate(lines, start=1):
             product = line.product
             qty = line.quantity
@@ -79,6 +82,10 @@ class MRPService:
                     sheet_mass_per_unit = sheet_area_per_unit * (spec.panel_thickness_mm / 1000.0) * self.settings.steel_density_kg_m3
                     insulation_area_per_unit = sheet_area_per_unit
                     profile_length_per_unit = (4 * (W + H + L) / 1000.0) if spec.has_profile_framework else 0.0
+
+                    if spec.has_profile_framework:
+                        ahu_pieces = ([spec.width_mm] * 4 + [spec.height_mm] * 4 + [spec.length_mm] * 4) * qty
+                        agg_profile_pieces_mm.extend(ahu_pieces)
 
                 elif product.product_type == ProductType.FITTING_DUCT.value:
                     spec = FittingSpec(**product.attributes)
@@ -213,4 +220,9 @@ class MRPService:
             },
             "notes": "Hesaplama tüm ürün tipleri için yapılmıştır.",
         }
+
+        if agg_profile_pieces_mm:
+            nesting_result = optimize_1d_cuts(agg_profile_pieces_mm)
+            result["summary"]["material"]["profile_nesting"] = nesting_result
+
         return result
