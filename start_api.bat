@@ -1,4 +1,4 @@
 @echo off
 cd /d %~dp0
-uvicorn main:app --reload
+uvicorn api_app:app --reload
 

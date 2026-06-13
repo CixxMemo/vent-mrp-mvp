@@ -24,7 +24,7 @@ import requests
 
 IS_FROZEN = bool(getattr(sys, "frozen", False))
 BASE_DIR = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
-BACKEND_APP = "main:app"
+BACKEND_APP = "api_app:app"
 BACKEND_URL = "http://127.0.0.1:8000"
 BACKEND_HEALTH_URL = f"{BACKEND_URL}/health"
 STREAMLIT_URL = "http://127.0.0.1:8501"

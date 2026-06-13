@@ -9,7 +9,7 @@ if str(ROOT) not in sys.path:
 import pytest
 from fastapi.testclient import TestClient
 
-from main import app
+from api_app import app
 
 client = TestClient(app)
 
