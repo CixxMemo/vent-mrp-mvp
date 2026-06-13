@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from pydantic import BaseModel, Field, validator
 
@@ -26,6 +26,42 @@ class RectangularDuctSpec(BaseModel):
         return v
 
 
+class AHUSpec(BaseModel):
+    width_mm: float = Field(..., gt=0, description="Kabin genişliği (mm)")
+    height_mm: float = Field(..., gt=0, description="Kabin yüksekliği (mm)")
+    length_mm: float = Field(..., gt=0, description="Kabin uzunluğu (mm)")
+    panel_thickness_mm: float = Field(..., gt=0, description="Panel kalınlığı (mm)")
+    has_profile_framework: bool = Field(True, description="Profil çerçeve mevcut mu?")
+
+
+class FittingSpec(BaseModel):
+    fitting_shape: str = Field(
+        ...,
+        description="Fitting tipi (ELBOW, TEE, REDUCER vb.)",
+    )
+    main_dimension_mm: float = Field(..., gt=0, description="Ana ölçü (mm)")
+    thickness_mm: float = Field(..., gt=0, description="Sac kalınlığı (mm)")
+    angle_degrees: Optional[float] = Field(None, description="Açı (derece)")
+
+    @validator("fitting_shape")
+    def validate_fitting_shape(cls, v: str) -> str:
+        allowed = {"ELBOW", "TEE", "REDUCER", "OFFSET", "TRANSITION"}
+        v_upper = v.upper()
+        if v_upper not in allowed:
+            raise ValueError(
+                f"Geçersiz fitting tipi: '{v}'. İzin verilen değerler: {', '.join(sorted(allowed))}"
+            )
+        return v_upper
+
+
+# Type-to-spec mapping for validation
+_PRODUCT_TYPE_SPEC_MAP = {
+    ProductType.RECTANGULAR_DUCT: RectangularDuctSpec,
+    ProductType.AHU_CABINET: AHUSpec,
+    ProductType.FITTING_DUCT: FittingSpec,
+}
+
+
 class BOMItemBase(BaseModel):
     name: str = Field(..., description="Malzeme/aksesuar adı")
     unit: Optional[str] = Field(None, description="Birim")
@@ -48,8 +84,21 @@ class ProductBase(BaseModel):
     name: str
     description: Optional[str] = None
     product_type: ProductType
-    spec: RectangularDuctSpec
+    spec: Union[RectangularDuctSpec, AHUSpec, FittingSpec]
     bom_items: Optional[List[BOMItemCreate]] = Field(default_factory=list)
+
+    @validator("spec")
+    def validate_spec_matches_product_type(cls, v, values):
+        product_type = values.get("product_type")
+        if product_type is None:
+            return v
+        expected_spec_cls = _PRODUCT_TYPE_SPEC_MAP.get(product_type)
+        if expected_spec_cls and not isinstance(v, expected_spec_cls):
+            raise ValueError(
+                f"'{product_type.value}' ürün tipi için '{expected_spec_cls.__name__}' "
+                f"spec bekleniyor, ancak '{type(v).__name__}' verildi."
+            )
+        return v
 
 
 class ProductCreate(ProductBase):
@@ -62,5 +111,3 @@ class ProductRead(ProductBase):
 
     class Config:
         from_attributes = True
-
-
