@@ -6,7 +6,7 @@ from pydantic import ValidationError
 
 from core.errors import ValidationAppException
 from core.settings import Settings
-from modules.products.schemas import RectangularDuctSpec
+from modules.products.schemas import AHUSpec, FittingSpec, RectangularDuctSpec
 from modules.products.types import ProductType
 from modules.work_orders.models import WorkOrder, WorkOrderLine
 
@@ -44,6 +44,7 @@ class MRPService:
         agg_sheet_area = 0.0
         agg_sheet_mass = 0.0
         agg_insulation_area = 0.0
+        agg_profile_length = 0.0
         agg_bom_cost: float = 0.0
         total_quantity = 0
         waste_factor = self._resolve_work_order_waste_factor(work_order)
@@ -60,27 +61,47 @@ class MRPService:
 
         for line_number, line in enumerate(lines, start=1):
             product = line.product
-            if product.product_type != ProductType.RECTANGULAR_DUCT.value:
-                raise ValidationAppException("Ürün tipi için hesaplama tanımlı değil")
+            qty = line.quantity
+            total_quantity += qty
+
             try:
-                spec = RectangularDuctSpec(**product.attributes)
+                if product.product_type == ProductType.RECTANGULAR_DUCT.value:
+                    spec = RectangularDuctSpec(**product.attributes)
+                    sheet_area_per_unit = 2 * (spec.width_mm + spec.height_mm) * spec.length_mm / 1_000_000
+                    sheet_mass_per_unit = sheet_area_per_unit * (spec.thickness_mm / 1000.0) * self.settings.steel_density_kg_m3
+                    insulation_area_per_unit = sheet_area_per_unit if spec.insulation_enabled else 0.0
+                    profile_length_per_unit = 0.0
+
+                elif product.product_type == ProductType.AHU_CABINET.value:
+                    spec = AHUSpec(**product.attributes)
+                    W, H, L = spec.width_mm, spec.height_mm, spec.length_mm
+                    sheet_area_per_unit = 2 * (W*H + W*L + H*L) / 1_000_000
+                    sheet_mass_per_unit = sheet_area_per_unit * (spec.panel_thickness_mm / 1000.0) * self.settings.steel_density_kg_m3
+                    insulation_area_per_unit = sheet_area_per_unit
+                    profile_length_per_unit = (4 * (W + H + L) / 1000.0) if spec.has_profile_framework else 0.0
+
+                elif product.product_type == ProductType.FITTING_DUCT.value:
+                    spec = FittingSpec(**product.attributes)
+                    base_area = (spec.main_dimension_mm / 1000.0) ** 2 * 3.14 * 1.5
+                    sheet_area_per_unit = base_area * 1.30
+                    sheet_mass_per_unit = sheet_area_per_unit * (spec.thickness_mm / 1000.0) * self.settings.steel_density_kg_m3
+                    insulation_area_per_unit = 0.0
+                    profile_length_per_unit = 0.0
+
+                else:
+                    raise ValidationAppException("Ürün tipi için hesaplama tanımlı değil")
             except ValidationError as exc:
                 raise ValidationAppException("Ürün ölçüleri geçersiz") from exc
 
-            qty = line.quantity
-            total_quantity += qty
-            base_sheet_area = 2 * (spec.width_mm + spec.height_mm) * spec.length_mm / 1_000_000
-            sheet_area_per_unit = base_sheet_area * waste_multiplier
-            sheet_mass_per_unit = sheet_area_per_unit * (spec.thickness_mm / 1000.0) * self.settings.steel_density_kg_m3
-            insulation_area_per_unit = sheet_area_per_unit if spec.insulation_enabled else 0.0
-
-            sheet_area_line = sheet_area_per_unit * qty
-            sheet_mass_line = sheet_mass_per_unit * qty
-            insulation_area_line = insulation_area_per_unit * qty
+            sheet_area_line = sheet_area_per_unit * qty * waste_multiplier
+            sheet_mass_line = sheet_mass_per_unit * qty * waste_multiplier
+            insulation_area_line = insulation_area_per_unit * qty * waste_multiplier
+            profile_length_line = profile_length_per_unit * qty * waste_multiplier
 
             agg_sheet_area += sheet_area_line
             agg_sheet_mass += sheet_mass_line
             agg_insulation_area += insulation_area_line
+            agg_profile_length += profile_length_line
 
             for item in product.bom_items:
                 total_qty = item.quantity_per_unit * qty * waste_multiplier
@@ -109,11 +130,13 @@ class MRPService:
                         "sheet_area_m2": sheet_area_per_unit,
                         "sheet_mass_kg": sheet_mass_per_unit,
                         "insulation_area_m2": insulation_area_per_unit,
+                        "profile_length_m": profile_length_per_unit,
                     },
                     "totals": {
                         "sheet_area_m2": sheet_area_line,
                         "sheet_mass_kg": sheet_mass_line,
                         "insulation_area_m2": insulation_area_line,
+                        "profile_length_m": profile_length_line,
                     },
                 }
             )
@@ -167,6 +190,7 @@ class MRPService:
                     "sheet_area_m2": agg_sheet_area,
                     "sheet_mass_kg": agg_sheet_mass,
                     "insulation_area_m2": agg_insulation_area,
+                    "profile_length_m": agg_profile_length,
                 },
                 "cost": {
                     "bom_total": agg_bom_cost,
@@ -187,6 +211,6 @@ class MRPService:
                 "priced_items": priced_items,
                 "unpriced_items": unpriced_items,
             },
-            "notes": "Hesaplama dikdörtgen kanal için yapılmıştır.",
+            "notes": "Hesaplama tüm ürün tipleri için yapılmıştır.",
         }
         return result
