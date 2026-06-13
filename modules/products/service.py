@@ -2,9 +2,8 @@ from typing import List, Dict, Any
 
 from sqlalchemy.orm import Session
 
-from core.errors import NotFoundException, ValidationAppException
+from core.errors import NotFoundException
 from modules.products import models, schemas
-from modules.products.types import ProductType
 
 
 def _serialize_product(product: models.Product) -> Dict[str, Any]:
@@ -28,14 +27,11 @@ def _serialize_product(product: models.Product) -> Dict[str, Any]:
 
 
 def create_product(db: Session, product_in: schemas.ProductCreate) -> models.Product:
-    if product_in.product_type != ProductType.RECTANGULAR_DUCT:
-        raise ValidationAppException("Şu an yalnızca dikdörtgen kanal ürün tipi destekleniyor")
-
     product = models.Product(
         name=product_in.name,
         description=product_in.description,
         product_type=product_in.product_type.value,
-        attributes=product_in.spec.dict(),
+        attributes=product_in.spec.model_dump(),
     )
 
     for bom in product_in.bom_items or []:
