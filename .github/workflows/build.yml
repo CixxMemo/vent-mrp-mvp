@@ -24,7 +24,7 @@ jobs:
           pip install pyinstaller
 
       - name: Build with PyInstaller
-        run: pyinstaller --noconfirm --onedir --windowed --name "FactoryCut" run_desktop.py
+        run: pyinstaller --noconfirm --onedir --windowed --name "FactoryCut" --hidden-import fastapi --hidden-import uvicorn --hidden-import pandas --hidden-import openpyxl --collect-all customtkinter run_desktop.py
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4

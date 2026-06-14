@@ -2,6 +2,12 @@ import sys
 import subprocess
 import time
 import requests
+import multiprocessing
+import fastapi
+import uvicorn
+import pandas
+import openpyxl
+import main
 
 def launch_ui():
     from main import FactoryCutApp
@@ -48,4 +54,5 @@ def main():
             backend_process.kill()
 
 if __name__ == "__main__":
+    multiprocessing.freeze_support()
     main()
