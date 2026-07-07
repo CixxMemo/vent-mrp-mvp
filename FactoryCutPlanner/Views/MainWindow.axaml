@@ -1,0 +1,31 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:FactoryCutPlanner.ViewModels"
+        xmlns:views="using:FactoryCutPlanner.Views"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
+        x:Class="FactoryCutPlanner.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Icon="/Assets/avalonia-logo.ico"
+        Title="FactoryCutPlanner"
+        WindowStartupLocation="CenterScreen"
+        Width="1200" Height="800">
+
+    <Design.DataContext>
+        <vm:MainWindowViewModel/>
+    </Design.DataContext>
+
+    <TabControl Margin="8">
+        <TabItem Header="📦 Ürünler">
+            <views:ProductsPageView DataContext="{Binding ProductsPage}" />
+        </TabItem>
+        <TabItem Header="📋 İş Emirleri">
+            <views:WorkOrdersPageView DataContext="{Binding WorkOrdersPage}" />
+        </TabItem>
+        <TabItem Header="📊 MRP Hesaplama">
+            <views:MrpPageView DataContext="{Binding MrpPage}" />
+        </TabItem>
+    </TabControl>
+
+</Window>

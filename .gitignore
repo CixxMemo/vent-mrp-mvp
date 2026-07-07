@@ -13,3 +13,15 @@ __pycache__/
 # Build outputs
 dist/
 build/
+
+# macOS
+.DS_Store
+
+# IDEs
+.idea/
+.vscode/
+
+# C# build outputs
+bin/
+obj/
+*.app

@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="FactoryCutPlanner.Tests/FactoryCutPlanner.Tests.csproj" />
+  <Project Path="FactoryCutPlanner/FactoryCutPlanner.csproj" />
+  <Project Path="FactoryCutTest/FactoryCutTest.csproj" />
+</Solution>

@@ -1,0 +1,176 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:FactoryCutPlanner.ViewModels"
+             x:Class="FactoryCutPlanner.Views.MrpPageView"
+             x:DataType="vm:MrpPageViewModel">
+
+  <Grid RowDefinitions="Auto,*">
+    <!-- Kontrol Paneli -->
+    <Border Grid.Row="0" Background="#1E1E2E" CornerRadius="12" Margin="16,16,16,8" Padding="16">
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        
+        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+          <TextBlock Text="İş Emri Seçin:" Foreground="#CDD6F4" FontSize="13" VerticalAlignment="Center"/>
+          <ComboBox ItemsSource="{Binding WorkOrderOptions}" 
+                    SelectedItem="{Binding SelectedWorkOrder}" 
+                    DisplayMemberBinding="{Binding Display}" 
+                    PlaceholderText="— İş Emri Yok —" Width="300"
+                    Background="#313244" BorderBrush="#45475A" Foreground="#CDD6F4"/>
+        </StackPanel>
+        
+        <TextBlock Grid.Column="1" Text="{Binding StatusMessage}" IsVisible="{Binding HasStatus}"
+                   Foreground="{Binding StatusColor}" VerticalAlignment="Center" HorizontalAlignment="Center" TextWrapping="Wrap"/>
+        
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+          <Button Content="▶  MRP Hesapla" Command="{Binding CalculateMrpCommand}"
+                  Background="#F9E2AF" Foreground="#1E1E2E" FontSize="13" FontWeight="Bold" CornerRadius="8" 
+                  Height="36" Width="140" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
+                  
+          <Button Content="📥 Excel Kaydet" Command="{Binding ExportExcelCommand}"
+                  Background="#A6E3A1" Foreground="#1E1E2E" FontSize="13" FontWeight="Bold" CornerRadius="8" 
+                  Height="36" Width="130" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
+        </StackPanel>
+        
+      </Grid>
+    </Border>
+
+    <!-- Sonuç Alanı -->
+    <Border Grid.Row="1" Background="#1E1E2E" CornerRadius="12" Margin="16,0,16,16">
+      <ScrollViewer>
+        <Grid>
+          
+          <!-- Boş Durum -->
+          <StackPanel IsVisible="{Binding IsEmptyStateVisible}" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="12" Margin="0,80">
+            <TextBlock Text="📊" FontSize="56" HorizontalAlignment="Center"/>
+            <TextBlock Text="Bir iş emri seçip MRP Hesapla'ya basın" FontSize="15" Foreground="#6C7086" HorizontalAlignment="Center"/>
+            <Border Height="3" Width="50" Background="#F9E2AF" CornerRadius="2" HorizontalAlignment="Center"/>
+          </StackPanel>
+
+          <!-- Sonuçlar -->
+          <StackPanel IsVisible="{Binding IsResultVisible}" Margin="16">
+            
+            <!-- Proje Bilgisi -->
+            <StackPanel Margin="0,0,0,16">
+              <TextBlock Text="{Binding ProjectName}" FontSize="18" FontWeight="Bold" Foreground="#CDD6F4"/>
+              <TextBlock Text="{Binding WorkOrderInfo}" FontSize="12" Foreground="#6C7086" Margin="0,4,0,0"/>
+            </StackPanel>
+
+            <!-- Özet Kartları (UniformGrid ile eşit genişlikte 5 kolon) -->
+            <UniformGrid Columns="5" Margin="-4,0,-4,16">
+              
+              <!-- 1: Sac Alanı -->
+              <Border Background="#252536" CornerRadius="12" Margin="4">
+                <StackPanel Margin="0,14,0,0" HorizontalAlignment="Center">
+                  <TextBlock Text="📐" FontSize="24" HorizontalAlignment="Center" Margin="0,0,0,4"/>
+                  <TextBlock Text="Sac Alanı" FontSize="11" Foreground="#6C7086" HorizontalAlignment="Center"/>
+                  <TextBlock Text="{Binding SheetArea}" FontSize="16" FontWeight="Bold" Foreground="#89B4FA" HorizontalAlignment="Center" Margin="0,2,0,4"/>
+                  <Border Height="3" Width="40" Background="#89B4FA" CornerRadius="2" HorizontalAlignment="Center" Margin="0,0,0,14"/>
+                </StackPanel>
+              </Border>
+              
+              <!-- 2: Sac Ağırlığı -->
+              <Border Background="#252536" CornerRadius="12" Margin="4">
+                <StackPanel Margin="0,14,0,0" HorizontalAlignment="Center">
+                  <TextBlock Text="⚖️" FontSize="24" HorizontalAlignment="Center" Margin="0,0,0,4"/>
+                  <TextBlock Text="Sac Ağırlığı" FontSize="11" Foreground="#6C7086" HorizontalAlignment="Center"/>
+                  <TextBlock Text="{Binding SheetMass}" FontSize="16" FontWeight="Bold" Foreground="#A6E3A1" HorizontalAlignment="Center" Margin="0,2,0,4"/>
+                  <Border Height="3" Width="40" Background="#A6E3A1" CornerRadius="2" HorizontalAlignment="Center" Margin="0,0,0,14"/>
+                </StackPanel>
+              </Border>
+
+              <!-- 3: Yalıtım Alanı -->
+              <Border Background="#252536" CornerRadius="12" Margin="4">
+                <StackPanel Margin="0,14,0,0" HorizontalAlignment="Center">
+                  <TextBlock Text="🧊" FontSize="24" HorizontalAlignment="Center" Margin="0,0,0,4"/>
+                  <TextBlock Text="Yalıtım Alanı" FontSize="11" Foreground="#6C7086" HorizontalAlignment="Center"/>
+                  <TextBlock Text="{Binding InsulationArea}" FontSize="16" FontWeight="Bold" Foreground="#CBA6F7" HorizontalAlignment="Center" Margin="0,2,0,4"/>
+                  <Border Height="3" Width="40" Background="#CBA6F7" CornerRadius="2" HorizontalAlignment="Center" Margin="0,0,0,14"/>
+                </StackPanel>
+              </Border>
+
+              <!-- 4: Profil İhtiyacı -->
+              <Border Background="#252536" CornerRadius="12" Margin="4">
+                <StackPanel Margin="0,14,0,0" HorizontalAlignment="Center">
+                  <TextBlock Text="📏" FontSize="24" HorizontalAlignment="Center" Margin="0,0,0,4"/>
+                  <TextBlock Text="{Binding ProfileTitle}" FontSize="11" Foreground="#6C7086" HorizontalAlignment="Center"/>
+                  <TextBlock Text="{Binding ProfileValue}" FontSize="16" FontWeight="Bold" Foreground="#F9E2AF" HorizontalAlignment="Center" Margin="0,2,0,4"/>
+                  <Border Height="3" Width="40" Background="#F9E2AF" CornerRadius="2" HorizontalAlignment="Center" Margin="0,0,0,14"/>
+                </StackPanel>
+              </Border>
+
+              <!-- 5: BOM Maliyeti -->
+              <Border Background="#252536" CornerRadius="12" Margin="4">
+                <StackPanel Margin="0,14,0,0" HorizontalAlignment="Center">
+                  <TextBlock Text="💰" FontSize="24" HorizontalAlignment="Center" Margin="0,0,0,4"/>
+                  <TextBlock Text="BOM Maliyeti" FontSize="11" Foreground="#6C7086" HorizontalAlignment="Center"/>
+                  <TextBlock Text="{Binding BomCost}" FontSize="16" FontWeight="Bold" Foreground="#F9E2AF" HorizontalAlignment="Center" Margin="0,2,0,4"/>
+                  <Border Height="3" Width="40" Background="#F9E2AF" CornerRadius="2" HorizontalAlignment="Center" Margin="0,0,0,14"/>
+                </StackPanel>
+              </Border>
+
+            </UniformGrid>
+
+            <!-- Kalem Detayları -->
+            <StackPanel IsVisible="{Binding IsLinesVisible}">
+              <TextBlock Text="Kalem Detayları" FontSize="14" FontWeight="Bold" Foreground="#CDD6F4" Margin="0,12,0,6"/>
+              <ItemsControl ItemsSource="{Binding Lines}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate DataType="vm:MrpLineDetailViewModel">
+                    <Border Background="#252536" CornerRadius="8" Padding="12,8" Margin="0,2">
+                      <Grid ColumnDefinitions="40,*,*">
+                        <TextBlock Grid.Column="0" Text="{Binding LineNumber}" FontSize="12" FontWeight="Bold" Foreground="#89B4FA" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="1" Text="{Binding ProductInfo}" FontSize="12" Foreground="#CDD6F4" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="2" Text="{Binding DetailText}" FontSize="11" Foreground="#6C7086" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                      </Grid>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+
+            <!-- Fiyatlı BOM Listesi -->
+            <StackPanel IsVisible="{Binding IsPricedVisible}" Margin="0,12,0,0">
+              <TextBlock Text="{Binding PricedTitle}" FontSize="14" FontWeight="Bold" Foreground="#CDD6F4" Margin="0,12,0,6"/>
+              <ItemsControl ItemsSource="{Binding PricedBomItems}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate DataType="vm:MrpBomItemViewModel">
+                    <Border Background="#252536" CornerRadius="8" Padding="12,8" Margin="0,2">
+                      <Grid ColumnDefinitions="*,*">
+                        <TextBlock Grid.Column="0" Text="{Binding LeftText}" FontSize="12" Foreground="#CDD6F4" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="1" Text="{Binding RightText}" FontSize="12" FontWeight="Bold" Foreground="{Binding RightTextColor}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                      </Grid>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+
+            <!-- Fiyatsız BOM Listesi -->
+            <StackPanel IsVisible="{Binding IsUnpricedVisible}" Margin="0,12,0,0">
+              <TextBlock Text="{Binding UnpricedTitle}" FontSize="14" FontWeight="Bold" Foreground="#CDD6F4" Margin="0,12,0,6"/>
+              <ItemsControl ItemsSource="{Binding UnpricedBomItems}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate DataType="vm:MrpBomItemViewModel">
+                    <Border Background="#252536" CornerRadius="8" Padding="12,8" Margin="0,2">
+                      <Grid ColumnDefinitions="*,*">
+                        <TextBlock Grid.Column="0" Text="{Binding LeftText}" FontSize="12" Foreground="#CDD6F4" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="1" Text="{Binding RightText}" FontSize="11" Foreground="{Binding RightTextColor}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                      </Grid>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+
+            <!-- Uyarı -->
+            <Border IsVisible="{Binding IsCompletenessWarningVisible}" Background="#45475A" CornerRadius="8" Margin="0,12,0,12" Padding="12,8">
+              <TextBlock Text="{Binding CompletenessWarning}" FontSize="12" Foreground="#F9E2AF"/>
+            </Border>
+
+          </StackPanel>
+        </Grid>
+      </ScrollViewer>
+    </Border>
+  </Grid>
+
+</UserControl>

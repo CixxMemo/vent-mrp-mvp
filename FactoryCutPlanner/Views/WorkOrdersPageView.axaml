@@ -1,0 +1,170 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:FactoryCutPlanner.ViewModels"
+             x:Class="FactoryCutPlanner.Views.WorkOrdersPageView"
+             x:DataType="vm:WorkOrdersPageViewModel">
+
+  <Grid ColumnDefinitions="4*,6*" Margin="16">
+    <!-- SOL PANEL: İŞ EMRİ FORMU -->
+    <Border Grid.Column="0" Background="#1E1E2E" CornerRadius="12" Margin="0,0,6,0">
+      <Grid RowDefinitions="Auto,*,Auto">
+        
+        <!-- Başlık -->
+        <TextBlock Grid.Row="0" Text="Yeni İş Emri Oluştur" 
+                   FontSize="16" FontWeight="Bold" Foreground="#CDD6F4"
+                   Margin="16,16,16,12"/>
+
+        <!-- Form Alanı (Kaydırılabilir) -->
+        <ScrollViewer Grid.Row="1" Margin="16,0">
+          <StackPanel Spacing="12">
+            
+            <!-- Proje Adı -->
+            <StackPanel Spacing="4">
+              <TextBlock Text="Proje Adı *" FontSize="12" Foreground="#6C7086"/>
+              <TextBox Text="{Binding ProjectName}" 
+                       PlaceholderText="Örn: AVM Havalandırma Projesi" 
+                       Background="#313244" BorderBrush="#45475A" Foreground="#CDD6F4"/>
+            </StackPanel>
+
+            <!-- Fire Oranı -->
+            <StackPanel Spacing="4">
+              <TextBlock Text="Fire Oranı (%)" FontSize="12" Foreground="#6C7086"/>
+              <Grid ColumnDefinitions="*,Auto">
+                <Slider Grid.Column="0" Value="{Binding WasteFactor}" Minimum="0" Maximum="30" TickFrequency="1" IsSnapToTickEnabled="True" 
+                        Foreground="#89B4FA" Margin="0,0,12,0"/>
+                <TextBlock Grid.Column="1" Text="{Binding WasteFactor, StringFormat='\% {0}'}" 
+                           FontSize="13" FontWeight="Bold" Foreground="#89B4FA" VerticalAlignment="Center"/>
+              </Grid>
+            </StackPanel>
+
+            <!-- Kalemler Bölümü -->
+            <Border BorderThickness="0,1,0,0" BorderBrush="#45475A" Margin="0,8"/>
+            <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,8">
+              <TextBlock Grid.Column="0" Text="İş Emri Kalemleri" 
+                         FontSize="12" FontWeight="Bold" Foreground="#CDD6F4" VerticalAlignment="Center"/>
+              <Button Grid.Column="1" Content="＋ Kalem Ekle" Command="{Binding AddLineRowCommand}"
+                      Background="#313244" Foreground="#CDD6F4" FontSize="11" CornerRadius="6"
+                      Padding="12,6"/>
+            </Grid>
+
+            <!-- Dinamik Kalem Satırları -->
+            <ItemsControl ItemsSource="{Binding WorkOrderLines}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="vm:WorkOrderLineViewModel">
+                  <Border Background="#252536" CornerRadius="8" Padding="8" Margin="0,0,0,6">
+                    <Grid ColumnDefinitions="*,80,Auto">
+                      <!-- Ürün Seçimi -->
+                      <ComboBox Grid.Column="0" ItemsSource="{Binding $parent[UserControl].((vm:WorkOrdersPageViewModel)DataContext).ProductOptions}"
+                                SelectedItem="{Binding SelectedProduct}"
+                                DisplayMemberBinding="{Binding Display}"
+                                HorizontalAlignment="Stretch" Margin="0,0,8,0"
+                                Background="#313244" BorderBrush="#45475A" Foreground="#CDD6F4"
+                                PlaceholderText="— Ürün Seçin —"/>
+                      
+                      <!-- Miktar -->
+                      <TextBox Grid.Column="1" Text="{Binding Quantity}" PlaceholderText="Adet"
+                               Background="#313244" BorderBrush="#45475A" Foreground="#CDD6F4" Margin="0,0,8,0"/>
+                      
+                      <!-- Sil Butonu -->
+                      <Button Grid.Column="2" Content="✕" 
+                              Command="{Binding $parent[UserControl].((vm:WorkOrdersPageViewModel)DataContext).RemoveLineRowCommand}"
+                              CommandParameter="{Binding .}"
+                              Background="#F38BA8" Foreground="#1E1E2E" FontSize="12" FontWeight="Bold" CornerRadius="6"
+                              Width="30" Height="30" Padding="0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+          </StackPanel>
+        </ScrollViewer>
+
+        <!-- Alt Bölüm: Mesaj + Butonlar -->
+        <StackPanel Grid.Row="2" Margin="16" Spacing="8">
+          
+          <TextBlock Text="{Binding StatusMessage}" IsVisible="{Binding HasStatus}"
+                     Foreground="{Binding StatusColor}" TextWrapping="Wrap" FontSize="12"/>
+
+          <Button Content="💾  İş Emrini Kaydet" Command="{Binding SaveWorkOrderCommand}"
+                  HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                  Background="#89B4FA" Foreground="#1E1E2E" FontSize="14" FontWeight="Bold"
+                  CornerRadius="10" Height="42"/>
+                  
+          <Button Content="📊 Excel'den İçe Aktar" Click="OnImportFromExcelClicked"
+                  HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                  Background="#A6E3A1" Foreground="#1E1E2E" FontSize="14" FontWeight="Bold"
+                  CornerRadius="10" Height="42" Margin="0,8,0,0"/>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <!-- SAĞ PANEL: İŞ EMRİ LİSTESİ -->
+    <Border Grid.Column="1" Background="#1E1E2E" CornerRadius="12" Margin="6,0,0,0">
+      <Grid RowDefinitions="Auto,*">
+        
+        <!-- Başlık -->
+        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="16,16,16,8">
+          <TextBlock Grid.Column="0" Text="Kayıtlı İş Emirleri" 
+                     FontSize="16" FontWeight="Bold" Foreground="#CDD6F4" VerticalAlignment="Center"/>
+          <Button Grid.Column="1" Content="🔄" Command="{Binding RefreshDataCommand}"
+                  Background="#313244" Foreground="#CDD6F4" FontSize="14" CornerRadius="8"
+                  Width="32" Height="32" Padding="0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
+        </Grid>
+
+        <!-- Kaydırılabilir Liste -->
+        <ScrollViewer Grid.Row="1" Margin="16,0,16,12">
+          
+          <Panel>
+            <!-- Eğer liste boşsa gösterilecek uyarı -->
+            <TextBlock Text="Henüz iş emri oluşturulmamış." Foreground="#6C7086" FontSize="13" 
+                       HorizontalAlignment="Center" Margin="0,40,0,0"
+                       IsVisible="{Binding IsWorkOrdersEmpty}" />
+
+            <!-- Kart Görünümünde İş Emirleri -->
+            <ItemsControl ItemsSource="{Binding WorkOrders}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="vm:WorkOrderListItem">
+                  <Border Background="#252536" CornerRadius="10" Padding="12,10" Margin="0,0,0,8">
+                    <Grid RowDefinitions="Auto,Auto">
+                      
+                      <!-- Üst Satır: Proje Adı + Fire + Sil -->
+                      <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto" Margin="0,0,0,8">
+                        <TextBlock Grid.Column="0" Text="{Binding ProjectName}" 
+                                   FontSize="14" FontWeight="Bold" Foreground="#CDD6F4" VerticalAlignment="Center"/>
+                        
+                        <TextBlock Grid.Column="1" Text="{Binding WasteFactorPct, StringFormat='🔥 \%{0}'}" 
+                                   FontSize="11" Foreground="#FAB387" VerticalAlignment="Center" Margin="0,0,12,0">
+                          <TextBlock.IsVisible>
+                            <Binding Path="WasteFactorPct" Converter="{x:Static ObjectConverters.IsNotNull}"/>
+                          </TextBlock.IsVisible>
+                        </TextBlock>
+
+                        <Button Grid.Column="2" Content="Sil" 
+                                Command="{Binding $parent[UserControl].((vm:WorkOrdersPageViewModel)DataContext).DeleteWorkOrderCommand}"
+                                CommandParameter="{Binding .}"
+                                Background="#F38BA8" Foreground="#1E1E2E" FontSize="11" CornerRadius="6"
+                                Padding="10,4"/>
+                      </Grid>
+
+                      <!-- Kalemler -->
+                      <ItemsControl Grid.Row="1" ItemsSource="{Binding LineSummaries}">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate>
+                            <TextBlock Text="{Binding}" FontSize="11" Foreground="#6C7086" Margin="0,1"/>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                      
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </Panel>
+        </ScrollViewer>
+      </Grid>
+    </Border>
+
+  </Grid>
+</UserControl>
