@@ -1,3 +1,0 @@
-"""MRP calculation module."""
-
-

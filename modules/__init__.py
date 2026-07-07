@@ -1,3 +1,0 @@
-"""Application modules package."""
-
-
