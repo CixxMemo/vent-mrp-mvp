@@ -68,9 +68,14 @@ factorycut_planner/
 │   ├── Program.cs
 │   └── FactoryCutPlanner.csproj
 ├── FactoryCutPlanner.Tests/
-├── FactoryCutPlanner.slnx
-└── hvac_factory_ops.db
+└── FactoryCutPlanner.slnx
 ```
+
+The database is not part of the repository. The app creates it on first run in the
+user's local application data folder:
+
+- **Windows**: `%LOCALAPPDATA%\FactoryCutPlanner\factorycut.db`
+- **macOS**: `~/Library/Application Support/FactoryCutPlanner/factorycut.db`
 
 ## Architecture Overview
 

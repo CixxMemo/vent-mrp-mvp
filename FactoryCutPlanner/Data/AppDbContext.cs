@@ -7,10 +7,8 @@ namespace FactoryCutPlanner.Data;
 /// EF Core database context — the single gateway to the SQLite database.
 ///
 /// WHY a constructor parameter for dbPath:
-///   - Development: points to "../hvac_factory_ops.db" (relative to project)
-///   - Testing: can use ":memory:" for fast in-memory SQLite tests
-///   - Production: absolute path next to the packaged .exe
-///   Hardcoding the path would break in at least two of these scenarios.
+///   - The app itself uses the parameterless constructor (see DefaultDbPath)
+///   - Tests pass their own temporary file so they never touch real user data
 ///
 /// WHY OnModelCreating is so detailed:
 ///   The scaffolder generated column mappings (e.g., HasColumnName("product_id"))
@@ -24,25 +22,35 @@ public partial class AppDbContext : DbContext
     /// <summary>
     /// Creates a new context pointing to the given SQLite database file.
     /// </summary>
-    /// <param name="dbPath">
-    /// Path to the SQLite .db file. Examples:
-    ///   "../hvac_factory_ops.db" (development)
-    ///   ":memory:" (unit tests)
-    ///   "/Users/.../hvac_factory_ops.db" (production)
-    /// </param>
+    /// <param name="dbPath">Path to the SQLite .db file.</param>
     public AppDbContext(string dbPath)
     {
         _dbPath = dbPath;
     }
 
     /// <summary>
-    /// Parameterless constructor for EF Core tooling (migrations, scaffold).
-    /// Falls back to a sensible default path for development.
+    /// Where the application keeps its database when no explicit path is given:
+    ///   Windows: %LOCALAPPDATA%\FactoryCutPlanner\factorycut.db
+    ///   macOS:   ~/Library/Application Support/FactoryCutPlanner/factorycut.db
+    ///
+    /// WHY not next to the executable: an installed app's folder (e.g. Program Files)
+    /// is not writable for normal users, and replacing the app on update would
+    /// delete the user's data along with it.
+    /// </summary>
+    public static string DefaultDbPath { get; } = System.IO.Path.Combine(
+        System.Environment.GetFolderPath(System.Environment.SpecialFolder.LocalApplicationData),
+        "FactoryCutPlanner",
+        "factorycut.db");
+
+    /// <summary>
+    /// Parameterless constructor used by the app and by EF Core tooling.
+    /// Uses <see cref="DefaultDbPath"/> and makes sure its folder exists,
+    /// because SQLite creates a missing file but not a missing directory.
     /// </summary>
     public AppDbContext()
     {
-        var baseDir = System.AppContext.BaseDirectory;
-        _dbPath = System.IO.Path.Combine(baseDir, "hvac_factory_ops.db");
+        System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(DefaultDbPath)!);
+        _dbPath = DefaultDbPath;
     }
 
     // ----- DbSet properties -----

@@ -1,11 +1,15 @@
-name: Build Desktop Apps
+name: Build and Test
 
-on: [push]
+on:
+  push:
+  workflow_dispatch:
 
 jobs:
-  build:
+  test:
+    name: Test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [windows-latest, macos-latest]
 
@@ -13,21 +17,41 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
         with:
-          python-version: '3.11'
+          dotnet-version: '10.0.x'
 
-      - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
-          pip install pyinstaller
+      - name: Build and test
+        run: dotnet test FactoryCutPlanner.slnx -c Release
 
-      - name: Build with PyInstaller
-        run: pyinstaller --noconfirm --onedir --windowed --name "FactoryCut" --hidden-import fastapi --hidden-import uvicorn --hidden-import pandas --hidden-import openpyxl --collect-all customtkinter run_desktop.py
+  publish-windows:
+    name: Publish Windows executable
+    needs: test
+    runs-on: windows-latest
 
-      - name: Upload Artifacts
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      # Self-contained single file: runs on a Windows PC without .NET installed.
+      - name: Publish win-x64
+        run: >
+          dotnet publish FactoryCutPlanner/FactoryCutPlanner.csproj
+          -c Release -r win-x64 --self-contained true
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -o publish
+
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: FactoryCut-${{ runner.os }}
-          path: dist/
+          name: FactoryCutPlanner-win-x64
+          # Only the executable: the publish folder also holds ~100 MB of debug symbols.
+          path: publish/FactoryCutPlanner.exe
+          if-no-files-found: error
